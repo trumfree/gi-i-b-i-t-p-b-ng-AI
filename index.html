@@ -6,24 +6,16 @@
   <title>AI Giải Bài Tập – Thông Minh</title>
   <link rel="stylesheet" href="style.css"/>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet"/>
-  
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  
-  <script>
-    window.MathJax = {
-      tex: {
-        inlineMath: [['$', '$'], ['\\(', '\\)']],
-        displayMath: [['$$', '$$'], ['\\[', '\\]']]
-      },
-      startup: { typeset: false } // Chỉ chạy khi nhận được kết quả trả về từ AI
-    };
-  </script>
-  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css"/>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
 </head>
 <body>
 
+  <!-- Background particles -->
   <div class="bg-layer" id="bgLayer"></div>
 
+  <!-- Header -->
   <header>
     <div class="logo">
       <span class="logo-icon">⚡</span>
@@ -34,24 +26,34 @@
     </nav>
   </header>
 
+  <!-- Settings Modal -->
   <div class="modal-overlay" id="modalOverlay">
     <div class="modal">
       <div class="modal-header">
         <h3>⚙ Cài đặt API</h3>
         <button class="modal-close" id="modalClose">✕</button>
       </div>
-      <div class="modal-body">
-        <label for="apiKeyInput">Groq API Key</label>
-        <input type="password" id="apiKeyInput" placeholder="gsk_..." />
-        <button class="btn-save" id="btnSaveKey">Lưu cấu hình</button>
-      </div>
+      <label>Groq API Key</label>
+      <input type="password" id="apiKeyInput" placeholder="gsk_..." autocomplete="off"/>
+      <small>Key được lưu trong trình duyệt, không gửi đi đâu cả.</small>
+      <button class="btn-primary" id="btnSaveKey">💾 Lưu lại</button>
     </div>
   </div>
 
-  <main class="container">
-    <section class="section">
-      <h2 class="section-title">1. Chọn Khối Lớp</h2>
-      <div class="grid grade-grid" id="gradeGrid">
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-badge">🎓 Hỗ trợ lớp 6 – 12</div>
+    <h1>Giải Bài Tập<br/><span class="gradient-text">Bằng Hình Ảnh</span></h1>
+    <p class="hero-sub">Chụp ảnh bài tập → AI phân tích → Nhận đáp án + giải thích chi tiết</p>
+  </section>
+
+  <!-- Main App -->
+  <main>
+    <!-- Step 1: Grade -->
+    <div class="card step-card" id="stepGrade">
+      <div class="step-num">01</div>
+      <h2>Chọn lớp học</h2>
+      <div class="grade-grid" id="gradeGrid">
         <button class="grade-btn" data-grade="6">Lớp 6</button>
         <button class="grade-btn" data-grade="7">Lớp 7</button>
         <button class="grade-btn" data-grade="8">Lớp 8</button>
@@ -60,39 +62,49 @@
         <button class="grade-btn" data-grade="11">Lớp 11</button>
         <button class="grade-btn" data-grade="12">Lớp 12</button>
       </div>
-    </section>
+    </div>
 
-    <section class="section">
-      <h2 class="section-title">2. Chọn Môn Học</h2>
-      <div class="grid subject-grid" id="subjectGrid">
-        <button class="subject-btn active" data-subject="auto">✨ Tự động nhận diện</button>
-        <button class="subject-btn" data-subject="Toán học">📐 Toán học</button>
-        <button class="subject-btn" data-subject="Vật lý">🌌 Vật lý</button>
-        <button class="subject-btn" data-subject="Hóa học">🧪 Hóa học</button>
-        <button class="subject-btn" data-subject="Tiếng Anh">🇬🇧 Tiếng Anh</button>
-        <button class="subject-btn" data-subject="Sinh học">🌱 Sinh học</button>
-      </div>
-    </section>
-
-    <section class="section">
-      <h2 class="section-title">3. Tải Ảnh Bài Tập</h2>
+    <!-- Step 2: Upload -->
+    <div class="card step-card" id="stepUpload">
+      <div class="step-num">02</div>
+      <h2>Tải ảnh bài tập</h2>
       <div class="upload-zone" id="uploadZone">
-        <input type="file" id="fileInput" accept="image/*" style="display: none;" />
-        <div id="uploadInner">
-          <span class="upload-icon">📸</span>
-          <p>Kéo thả ảnh vào đây hoặc <span class="highlight-link" id="clickUpload">nhấp để chọn ảnh</span></p>
+        <input type="file" id="fileInput" accept="image/*" hidden/>
+        <div class="upload-inner" id="uploadInner">
+          <div class="upload-icon">📸</div>
+          <p>Kéo thả ảnh vào đây hoặc <span class="link" id="clickUpload">nhấn để chọn</span></p>
+          <small>PNG, JPG, WEBP – tối đa 10MB</small>
         </div>
-        <div id="previewWrap" style="display: none;">
-          <img id="previewImg" src="" alt="Preview" />
+        <div class="preview-wrap" id="previewWrap" style="display:none">
+          <img id="previewImg" src="" alt="Preview"/>
           <button class="btn-remove" id="btnRemove">✕ Xóa ảnh</button>
         </div>
       </div>
-    </section>
+    </div>
 
+    <!-- Step 3: Subject (optional) -->
+    <div class="card step-card" id="stepSubject">
+      <div class="step-num">03</div>
+      <h2>Môn học <span class="optional">(tuỳ chọn)</span></h2>
+      <div class="subject-grid" id="subjectGrid">
+        <button class="subject-btn active" data-subject="auto">🤖 Tự động nhận diện</button>
+        <button class="subject-btn" data-subject="Toán">📐 Toán</button>
+        <button class="subject-btn" data-subject="Vật lý">⚛ Vật lý</button>
+        <button class="subject-btn" data-subject="Hóa học">🧪 Hóa học</button>
+        <button class="subject-btn" data-subject="Sinh học">🌱 Sinh học</button>
+        <button class="subject-btn" data-subject="Ngữ văn">📖 Ngữ văn</button>
+        <button class="subject-btn" data-subject="Tiếng Anh">🌍 Tiếng Anh</button>
+        <button class="subject-btn" data-subject="Lịch sử">🏛 Lịch sử</button>
+        <button class="subject-btn" data-subject="Địa lý">🗺 Địa lý</button>
+      </div>
+    </div>
+
+    <!-- Solve Button -->
     <button class="btn-solve" id="btnSolve" disabled>
       <span class="btn-solve-text">🚀 Giải bài tập ngay</span>
     </button>
 
+    <!-- Result -->
     <div class="result-container" id="resultContainer" style="display:none">
       <div class="result-header">
         <div class="result-badge">✅ Đáp án</div>
@@ -103,6 +115,7 @@
       <button class="btn-new" id="btnNew">🔄 Giải bài khác</button>
     </div>
 
+    <!-- Loading -->
     <div class="loading-container" id="loadingContainer" style="display:none">
       <div class="loading-spinner"></div>
       <div class="loading-steps" id="loadingSteps">
@@ -112,16 +125,19 @@
       </div>
     </div>
 
+    <!-- Error -->
     <div class="error-container" id="errorContainer" style="display:none">
       <div class="error-icon">⚠️</div>
       <div class="error-msg" id="errorMsg"></div>
       <button class="btn-retry" id="btnRetry">Thử lại</button>
     </div>
+
   </main>
 
   <footer>
-    <p>&copy; 2026 EduSolve AI. Thiết kế theo phong cách tối giản All-Black.</p>
+    <p>EduSolve AI · Sử dụng Groq + LLaMA Vision · Không lưu dữ liệu người dùng</p>
   </footer>
 
+  <script src="app.js"></script>
 </body>
 </html>
