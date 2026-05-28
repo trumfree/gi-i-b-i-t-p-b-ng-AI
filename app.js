@@ -27,95 +27,78 @@ const btnCopy       = document.getElementById('btnCopy');
 const btnNew        = document.getElementById('btnNew');
 const loadingContainer = document.getElementById('loadingContainer');
 const errorContainer   = document.getElementById('errorContainer');
-const errorMsg      = document.getElementById('errorMsg');
-const btnRetry      = document.getElementById('btnRetry');
+const errorMsg         = document.getElementById('errorMsg');
+const btnRetry         = document.getElementById('btnRetry');
+const ls1 = document.getElementById('ls1');
+const ls2 = document.getElementById('ls2');
+const ls3 = document.getElementById('ls3');
 
-// ===== INIT =====
-document.addEventListener('DOMContentLoaded', () => {
-  const savedKey = localStorage.getItem('groq_api_key');
-  if (savedKey) {
-    apiKeyInput.value = savedKey;
-  }
-});
+// ===== API KEY =====
+function getApiKey() {
+  return localStorage.getItem('groq_api_key') || '';
+}
+function loadSavedKey() {
+  const k = getApiKey();
+  if (k) apiKeyInput.value = k;
+}
 
-// ===== SETTINGS MODAL =====
-btnSettings.addEventListener('click', () => modalOverlay.classList.add('active'));
-modalClose.addEventListener('click', () => modalOverlay.classList.remove('active'));
-modalOverlay.addEventListener('click', (e) => {
-  if (e.target === modalOverlay) modalOverlay.classList.remove('active');
+btnSettings.addEventListener('click', () => {
+  loadSavedKey();
+  modalOverlay.classList.add('show');
 });
+modalClose.addEventListener('click', () => modalOverlay.classList.remove('show'));
+modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) modalOverlay.classList.remove('show'); });
 
 btnSaveKey.addEventListener('click', () => {
   const key = apiKeyInput.value.trim();
-  if (key) {
-    localStorage.setItem('groq_api_key', key);
-    showToast('🔑 Đã lưu API Key thành công!');
-    modalOverlay.classList.remove('active');
-  } else {
-    localStorage.removeItem('groq_api_key');
-    showToast('⚠️ Đã xóa API Key!');
-  }
+  if (!key) { alert('Vui lòng nhập API key!'); return; }
+  localStorage.setItem('groq_api_key', key);
+  modalOverlay.classList.remove('show');
+  showToast('✅ Đã lưu API key!');
 });
 
-// ===== SELECTION LOGIC =====
-gradeGrid.addEventListener('click', (e) => {
-  if (e.target.classList.contains('grade-btn')) {
+// ===== GRADE SELECTION =====
+gradeGrid.querySelectorAll('.grade-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
     gradeGrid.querySelectorAll('.grade-btn').forEach(b => b.classList.remove('active'));
-    e.target.classList.add('active');
-    selectedGrade = e.target.getAttribute('data-grade');
+    btn.classList.add('active');
+    selectedGrade = btn.dataset.grade;
     checkReady();
-  }
+  });
 });
 
-subjectGrid.addEventListener('click', (e) => {
-  if (e.target.classList.contains('subject-btn')) {
+// ===== SUBJECT SELECTION =====
+subjectGrid.querySelectorAll('.subject-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
     subjectGrid.querySelectorAll('.subject-btn').forEach(b => b.classList.remove('active'));
-    e.target.classList.add('active');
-    selectedSubject = e.target.getAttribute('data-subject');
-    checkReady();
-  }
+    btn.classList.add('active');
+    selectedSubject = btn.dataset.subject;
+  });
 });
 
-// ===== UPLOAD LOGIC =====
-clickUpload.addEventListener('click', (e) => {
-  e.stopPropagation();
-  fileInput.click();
-});
-
-uploadZone.addEventListener('click', () => fileInput.click());
-
-uploadZone.addEventListener('dragover', (e) => {
-  e.preventDefault();
-  uploadZone.style.borderColor = 'var(--accent)';
-});
-
-uploadZone.addEventListener('dragleave', () => {
-  uploadZone.style.borderColor = 'var(--border)';
-});
-
-uploadZone.addEventListener('drop', (e) => {
-  e.preventDefault();
-  uploadZone.style.borderColor = 'var(--border)';
-  if (e.dataTransfer.files.length > 0) {
-    handleFile(e.dataTransfer.files[0]);
-  }
-});
+// ===== FILE UPLOAD =====
+clickUpload.addEventListener('click', (e) => { e.stopPropagation(); fileInput.click(); });
+uploadZone.addEventListener('click', () => { if (!uploadedFile) fileInput.click(); });
 
 fileInput.addEventListener('change', (e) => {
-  if (e.target.files.length > 0) {
-    handleFile(e.target.files[0]);
-  }
+  if (e.target.files[0]) handleFile(e.target.files[0]);
+});
+
+uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop', (e) => {
+  e.preventDefault(); uploadZone.classList.remove('dragover');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
 });
 
 function handleFile(file) {
-  if (!file.type.startsWith('image/')) {
-    showToast('⚠️ Vui lòng chỉ chọn tệp hình ảnh!');
-    return;
-  }
+  if (!file.type.startsWith('image/')) { alert('Vui lòng chọn file ảnh (PNG, JPG, WEBP)!'); return; }
+  if (file.size > 10 * 1024 * 1024) { alert('Ảnh quá lớn! Vui lòng chọn ảnh dưới 10MB.'); return; }
+
   uploadedFile = file;
   const reader = new FileReader();
   reader.onload = (e) => {
-    uploadedBase64 = e.target.result;
+    uploadedBase64 = e.target.result; // data:image/jpeg;base64,...
     previewImg.src = uploadedBase64;
     uploadInner.style.display = 'none';
     previewWrap.style.display = 'block';
@@ -135,61 +118,53 @@ btnRemove.addEventListener('click', (e) => {
   checkReady();
 });
 
+// ===== ENABLE SOLVE BUTTON =====
 function checkReady() {
-  if (selectedGrade && uploadedBase64) {
-    btnSolve.removeAttribute('disabled');
-  } else {
-    btnSolve.setAttribute('disabled', 'true');
-  }
+  btnSolve.disabled = !(selectedGrade && uploadedFile);
 }
 
-function hideAll() {
-  resultContainer.style.display = 'none';
-  loadingContainer.style.display = 'none';
-  errorContainer.style.display = 'none';
-}
-
-// ===== SOLVE PROBLEM =====
+// ===== SOLVE =====
 btnSolve.addEventListener('click', solveProblem);
 btnRetry.addEventListener('click', solveProblem);
 
 async function solveProblem() {
-  const apiKey = localStorage.getItem('groq_api_key') || apiKeyInput.value.trim();
+  const apiKey = getApiKey();
   if (!apiKey) {
-    showToast('🔑 Vui lòng cài đặt Groq API Key trước!');
-    modalOverlay.classList.add('active');
+    loadSavedKey();
+    modalOverlay.classList.add('show');
+    showToast('⚠️ Vui lòng nhập Groq API key trước!');
     return;
   }
 
+  // UI state: loading
   hideAll();
-  loadingContainer.style.display = 'block';
-  
-  const ls1 = document.getElementById('ls1');
-  const ls2 = document.getElementById('ls2');
-  const ls3 = document.getElementById('ls3');
-
-  ls1.className = 'loading-step active';
-  ls2.className = 'loading-step';
-  ls3.className = 'loading-step';
-
-  setTimeout(() => { ls1.className = 'loading-step'; ls2.className = 'loading-step active'; }, 1200);
-  setTimeout(() => { ls2.className = 'loading-step'; ls3.className = 'loading-step active'; }, 2800);
+  loadingContainer.style.display = 'flex';
+  setLoadingStep(1);
 
   try {
+    // Extract base64 data only (without the "data:image/...;base64," prefix)
     const base64Data = uploadedBase64.split(',')[1];
-    const mimeType = uploadedFile ? uploadedFile.type : 'image/jpeg';
+    const mediaType = uploadedFile.type; // e.g. "image/jpeg"
 
-    // Prompt tối ưu hóa để AI trả về đúng chuẩn bảng biểu và định dạng Toán LaTeX
-    const promptText = `Bạn là một chuyên gia giáo dục đỉnh cao. Hãy giải chi tiết bài tập trong hình ảnh này dành cho học sinh Lớp ${selectedGrade}.
-Môn học yêu cầu: ${selectedSubject === 'auto' ? 'Tự động nhận diện môn học qua hình ảnh' : selectedSubject}.
+    const subjectText = selectedSubject === 'auto'
+      ? 'tự động nhận diện môn học'
+      : `môn ${selectedSubject}`;
 
-Yêu cầu trình bày lời giải:
-1. Ghi rõ "Phương pháp:" để tóm tắt lý thuyết, công thức cần dùng.
-2. Trình bày chi tiết từng "Bước 1:", "Bước 2:", ... một cách rõ ràng, dễ hiểu.
-3. Nếu bài toán cần lập bảng giá trị hoặc bảng biến thiên, hãy sử dụng định dạng bảng Markdown chuẩn (| cột 1 | cột 2 |).
-4. Sử dụng công thức toán học LaTeX chuẩn đặt trong dấu đô la đơn $...$ cho công thức nội dòng và dấu đô la kép $$...$$ cho khối công thức riêng biệt.
-5. Kết luận bằng cụm từ "=> Đáp án:" kèm theo kết quả cuối cùng một cách nổi bật.`;
+    const systemPrompt = `Bạn là gia sư AI thông minh, chuyên giải bài tập cho học sinh lớp ${selectedGrade} (${subjectText}). 
+Nhiệm vụ của bạn:
+1. Đọc và hiểu nội dung bài tập trong ảnh.
+2. Xác định dạng bài và phương pháp giải phù hợp với trình độ lớp ${selectedGrade}.
+3. Trình bày lời giải THEO TỪNG BƯỚC rõ ràng, chi tiết.
+4. Cuối cùng, nêu đáp án kết luận rõ ràng.
+5. Nếu có thể, hãy giải thích ngắn gọn tại sao dùng phương pháp đó.
 
+Ngôn ngữ: Tiếng Việt.
+Phong cách: Dễ hiểu, thân thiện, phù hợp với học sinh cấp 2-3.
+Format: Sử dụng các ký hiệu như "Bước 1:", "Bước 2:", "=> Đáp án:" để dễ theo dõi.`;
+
+    setLoadingStep(2);
+
+    // Call Groq API (vision model)
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -197,99 +172,182 @@ Yêu cầu trình bày lời giải:
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'llama-3.2-11b-vision-preview',
+        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+        max_tokens: 2048,
         messages: [
+          { role: 'system', content: systemPrompt },
           {
             role: 'user',
             content: [
-              { type: 'text', text: promptText },
-              { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Data}` } }
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:${mediaType};base64,${base64Data}`
+                }
+              },
+              {
+                type: 'text',
+                text: `Đây là bài tập của học sinh lớp ${selectedGrade}${selectedSubject !== 'auto' ? ` môn ${selectedSubject}` : ''}. Hãy giải bài tập này một cách chi tiết, từng bước.`
+              }
             ]
           }
-        ],
-        temperature: 0.2,
-        max_tokens: 2048
+        ]
       })
     });
 
+    setLoadingStep(3);
+
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
-      throw new Error(errData.error?.message || `HTTP Error ${response.status}`);
+      const errMsg = errData?.error?.message || `HTTP ${response.status}`;
+      throw new Error(errMsg);
     }
 
     const data = await response.json();
-    const answer = data.choices[0].message.content;
+    const answer = data?.choices?.[0]?.message?.content || '';
 
-    // Tiến hành format xử lý cấu trúc
+    if (!answer) throw new Error('Không nhận được phản hồi từ AI. Vui lòng thử lại.');
+
+    // Format the answer
     const formatted = formatAnswer(answer);
 
-    // Hiển thị nội dung
+    // Show result
     hideAll();
-    resultMeta.textContent = `📚 Lớp ${selectedGrade} · ${selectedSubject === 'auto' ? 'Tự động nhận diện môn' : selectedSubject} · Model: LLaMA Vision (Groq)`;
+    resultMeta.textContent = `📚 Lớp ${selectedGrade} · ${selectedSubject === 'auto' ? 'Tự động nhận diện môn' : selectedSubject} · Model: LLaMA 4 Scout (Groq)`;
     resultBody.innerHTML = formatted;
     resultContainer.style.display = 'block';
     resultContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-    // KÍCH HOẠT MATHJAX ĐỂ QUÉT VÀ VẼ TOÁN HỌC KHÔNG BỊ LỖI CHỮ SẤY
-    if (window.MathJax) {
-      MathJax.typesetPromise([resultBody]).catch((err) => console.error('MathJax error:', err));
-    }
-
-  } catch (error) {
-    console.error(error);
+  } catch (err) {
+    console.error(err);
     hideAll();
-    errorMsg.textContent = `Lỗi hệ thống: ${error.message}. Vui lòng kiểm tra lại API Key hoặc kết nối mạng.`;
+    let msg = err.message || 'Có lỗi xảy ra. Vui lòng thử lại.';
+    if (msg.includes('401') || msg.includes('Unauthorized') || msg.includes('invalid_api_key')) {
+      msg = '🔑 API key không hợp lệ hoặc đã hết hạn. Vui lòng kiểm tra lại trong phần Cài đặt.';
+    } else if (msg.includes('429') || msg.includes('rate_limit')) {
+      msg = '⏳ Đã vượt quá giới hạn request. Vui lòng chờ 1 phút rồi thử lại.';
+    } else if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+      msg = '🌐 Lỗi kết nối mạng. Vui lòng kiểm tra internet và thử lại.';
+    }
+    errorMsg.textContent = msg;
     errorContainer.style.display = 'block';
   }
 }
 
 // ===== FORMAT ANSWER =====
 function formatAnswer(text) {
-  // 1. Tách các khối toán LaTeX ($ và $$) ra để tránh bị trình biên dịch Markdown của Marked.js làm hỏng cấu trúc ký tự đặc biệt
+  // Step 1: Tách các block display math \[...\] và $$...$$ ra để không bị ảnh hưởng
   const mathBlocks = [];
-  let processedText = text.replace(/(\$\$[\s\S]+?\$\$|\$.+?\$)/g, (match) => {
-    mathBlocks.push(match);
-    return `__MATH_BLOCK_${mathBlocks.length - 1}__`;
+  let processed = text;
+
+  // Lưu block display math vào placeholder
+  processed = processed.replace(/\$\$[\s\S]+?\$\$/g, (match) => {
+    mathBlocks.push({ type: 'display', content: match });
+    return `%%MATH_BLOCK_${mathBlocks.length - 1}%%`;
+  });
+  processed = processed.replace(/\\\[[\s\S]+?\\\]/g, (match) => {
+    mathBlocks.push({ type: 'display', content: match });
+    return `%%MATH_BLOCK_${mathBlocks.length - 1}%%`;
+  });
+  // Lưu inline math $...$ vào placeholder
+  processed = processed.replace(/\$[^$\n]+?\$/g, (match) => {
+    mathBlocks.push({ type: 'inline', content: match });
+    return `%%MATH_BLOCK_${mathBlocks.length - 1}%%`;
+  });
+  // Lưu inline math \(...\)
+  processed = processed.replace(/\\\([\s\S]+?\\\)/g, (match) => {
+    mathBlocks.push({ type: 'inline', content: match });
+    return `%%MATH_BLOCK_${mathBlocks.length - 1}%%`;
   });
 
-  // 2. Sử dụng Marked để compile mã Markdown sang các tag HTML chuẩn (như <table>, <ul>, <li>)
-  let html = typeof marked !== 'undefined' ? marked.parse(processedText) : processedText;
+  // Step 2: Escape HTML phần text thường
+  let html = processed
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-  // 3. Khôi phục lại toàn bộ mã toán học LaTeX nguyên vẹn vào các vị trí ban đầu trong HTML
-  mathBlocks.forEach((block, index) => {
-    html = html.replace(`__MATH_BLOCK_${index}__`, block);
+  // Step 3: Markdown cơ bản
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  html = html.replace(/#{3}\s(.+)/g, '<h3 style="font-family:var(--font-head);color:var(--accent2);margin:16px 0 8px;font-size:1rem;">$1</h3>');
+  html = html.replace(/#{2}\s(.+)/g, '<h2 style="font-family:var(--font-head);color:var(--accent);margin:18px 0 10px;font-size:1.1rem;">$1</h2>');
+  html = html.replace(/#{1}\s(.+)/g, '<h1 style="font-family:var(--font-head);color:var(--accent);margin:20px 0 12px;font-size:1.2rem;">$1</h1>');
+
+  // Step 4: Highlight step labels
+  html = html.replace(/(Bước \d+[:\.])/g, '<strong style="color:var(--accent);">$1</strong>');
+  html = html.replace(/(=&gt;\s*Đáp án[:\.]?)/gi, '<strong style="color:var(--accent3);font-size:1.05em;">$1</strong>');
+  html = html.replace(/(Kết luận[:\.]?)/gi, '<strong style="color:var(--accent3);">$1</strong>');
+  html = html.replace(/(Phương pháp[:\.]?)/gi, '<strong style="color:var(--accent2);">$1</strong>');
+
+  // Step 5: Line breaks
+  html = html.replace(/\n/g, '<br/>');
+
+  // Step 6: Restore math blocks và render bằng KaTeX
+  html = html.replace(/%%MATH_BLOCK_(\d+)%%/g, (_, idx) => {
+    const block = mathBlocks[parseInt(idx)];
+    try {
+      if (block.type === 'display') {
+        // Lấy nội dung bên trong $$...$$ hoặc \[...\]
+        let expr = block.content
+          .replace(/^\$\$|\$\$$/g, '')
+          .replace(/^\\\[|\\\]$/g, '')
+          .trim();
+        return '<div style="overflow-x:auto;padding:8px 0;text-align:center;">' +
+          katex.renderToString(expr, { displayMode: true, throwOnError: false }) +
+          '</div>';
+      } else {
+        let expr = block.content
+          .replace(/^\$|\$$/g, '')
+          .replace(/^\\\(|\\\)$/g, '')
+          .trim();
+        return katex.renderToString(expr, { displayMode: false, throwOnError: false });
+      }
+    } catch (e) {
+      // Nếu KaTeX lỗi, trả về text gốc
+      return `<code style="color:var(--accent2);background:var(--surface2);padding:2px 6px;border-radius:4px;">${block.content}</code>`;
+    }
   });
-
-  // 4. Áp dụng các class CSS custom highlight màu sắc rực rỡ từ code cũ của bạn
-  html = html.replace(/(Bước \d+[:\.])/g, '<strong style="color: var(--accent);">$1</strong>');
-  html = html.replace(/(=&gt; Đáp án[:\.]?|=> Đáp án[:\.]?)/gi, '<strong style="color: var(--accent3); font-size: 1.05em;">$1</strong>');
-  html = html.replace(/(Kết luận[:\.]?)/gi, '<strong style="color: var(--accent3);">$1</strong>');
-  html = html.replace(/(Phương pháp[:\.]?)/gi, '<strong style="color: var(--accent2);">$1</strong>');
 
   return html;
 }
 
-// ===== COPY TO CLIPBOARD =====
+// ===== LOADING STEPS =====
+function setLoadingStep(step) {
+  [ls1, ls2, ls3].forEach((el, i) => {
+    el.classList.remove('active', 'done');
+    if (i + 1 < step) el.classList.add('done');
+    if (i + 1 === step) el.classList.add('active');
+  });
+}
+
+// ===== HIDE ALL RESULT AREAS =====
+function hideAll() {
+  resultContainer.style.display = 'none';
+  loadingContainer.style.display = 'none';
+  errorContainer.style.display = 'none';
+}
+
+// ===== COPY =====
 btnCopy.addEventListener('click', () => {
-  navigator.clipboard.writeText(resultBody.innerText).then(() => {
-    const oldText = btnCopy.innerHTML;
-    btnCopy.innerHTML = '✨ Đã sao chép!';
-    setTimeout(() => btnCopy.innerHTML = oldText, 2000);
+  const text = resultBody.innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    btnCopy.textContent = '✅ Đã sao chép!';
+    setTimeout(() => (btnCopy.textContent = '📋 Sao chép'), 2000);
   });
 });
 
 // ===== NEW PROBLEM =====
 btnNew.addEventListener('click', () => {
-  uploadedFile = null;
-  uploadedBase64 = null;
+  // Reset file
+  uploadedFile = null; uploadedBase64 = null;
   fileInput.value = '';
   uploadInner.style.display = '';
   previewWrap.style.display = 'none';
   previewImg.src = '';
 
+  // Reset grade
   gradeGrid.querySelectorAll('.grade-btn').forEach(b => b.classList.remove('active'));
   selectedGrade = null;
 
+  // Reset subject
   subjectGrid.querySelectorAll('.subject-btn').forEach(b => b.classList.remove('active'));
   subjectGrid.querySelector('[data-subject="auto"]').classList.add('active');
   selectedSubject = 'auto';
@@ -308,9 +366,19 @@ function showToast(msg) {
     color: var(--text); padding: 12px 24px; border-radius: 100px;
     font-size: 0.9rem; font-weight: 600; z-index: 9999;
     box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-    animation: slideUp 0.2s ease;
+    animation: slideUp 0.25s ease;
   `;
   t.textContent = msg;
   document.body.appendChild(t);
-  setTimeout(() => t.remove(), 2500);
+  setTimeout(() => t.remove(), 2800);
 }
+
+// ===== INIT =====
+document.addEventListener('DOMContentLoaded', () => {
+  // Check if key is already set
+  if (!getApiKey()) {
+    setTimeout(() => {
+      showToast('⚙️ Nhấn "Cài đặt" để nhập Groq API Key');
+    }, 1200);
+  }
+});
